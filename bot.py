@@ -10,9 +10,15 @@ apihelper.CONNECT_TIMEOUT = 60
 apihelper.READ_TIMEOUT = 60
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-CHANNEL_ID = int(os.environ.get("CHANNEL_ID"))
 CHANNEL_URL = os.environ.get("CHANNEL_URL")
 ADMIN_ID = int(os.environ.get("ADMIN_ID"))
+
+# Channel ID ko handle karne ka ekdum safe tarika
+raw_channel_id = os.environ.get("CHANNEL_ID", "")
+if raw_channel_id.startswith("-100"):
+    CHANNEL_ID = int(raw_channel_id)
+else:
+    CHANNEL_ID = int(f"-100{raw_channel_id.replace('-', '')}")
 
 bot = telebot.TeleBot(BOT_TOKEN)
 file_database = {}
@@ -28,54 +34,69 @@ def run_flask():
     app.run(host='0.0.0.0', port=port)
 
 def is_user_subscribed(user_id):
+    # Agar admin check kar raha hai toh direct bypass
+    if user_id == ADMIN_ID:
+        return True
     try:
         member = bot.get_chat_member(CHANNEL_ID, user_id)
         if member.status in ['member', 'administrator', 'creator']:
             return True
         return False
     except Exception as e:
-        print(f"Error checking subscription: {e}")
+        print(f"Subscription checking failed for ID {CHANNEL_ID}: {e}")
         return False
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     user_id = message.from_user.id
+    chat_id = message.chat.id
+    
     if not message.text:
         return
+    
     text_args = message.text.split()
 
+    # AGAR USER LINK SE AAYA HAI
     if len(text_args) > 1:
         file_id = text_args[1]
-        if is_user_subscribed(user_id):
-            send_requested_file(message.chat.id, file_id)
-        else:
-            markup = InlineKeyboardMarkup()
-            markup.add(InlineKeyboardButton("📢 Join Royal", url=CHANNEL_URL))
-            markup.add(InlineKeyboardButton("🔄 Verify Subscription", callback_data=f"verify_{file_id}"))
-            bot.send_message(
-                message.chat.id, 
-                "⚠️ <b>Access Denied!</b>\n\nYou must join our channel and then click 'Verify Subscription' to unlock your file.", 
-                reply_markup=markup,
-                parse_mode="HTML"
-            )
+        
+        try:
+            # Check subscription with fallback error message
+            if is_user_subscribed(user_id):
+                send_requested_file(chat_id, file_id)
+            else:
+                markup = InlineKeyboardMarkup()
+                markup.add(InlineKeyboardButton("📢 Join Royal", url=CHANNEL_URL))
+                markup.add(InlineKeyboardButton("🔄 Verify Subscription", callback_data=f"verify_{file_id}"))
+                bot.send_message(
+                    chat_id, 
+                    "⚠️ <b>Access Denied!</b>\n\nYou must join our channel and then click 'Verify Subscription' to unlock your file.", 
+                    reply_markup=markup,
+                    parse_mode="HTML"
+                )
+        except Exception as crash_error:
+            bot.send_message(chat_id, f"❌ <b>Internal Verification Error:</b> {crash_error}\n\nAdmin please check CHANNEL_ID in Render!", parse_mode="HTML")
+            
     else:
+        # NORMAL START BINA LINK KE
         if user_id == ADMIN_ID:
-            bot.send_message(message.chat.id, "👋 <b>Welcome Admin!</b>\n\nForward me any file to generate a link.", parse_mode="HTML")
+            bot.send_message(chat_id, "👋 <b>Welcome Admin!</b>\n\nForward me any file to generate a link.", parse_mode="HTML")
         else:
-            bot.send_message(message.chat.id, "👋 <b>Welcome!</b>\n\nThis bot can only open secure download links shared by the admin.", parse_mode="HTML")
+            bot.send_message(chat_id, "👋 <b>Welcome!</b>\n\nThis bot can only open secure download links shared by the admin.", parse_mode="HTML")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('verify_'))
 def handle_verification(call):
     user_id = call.from_user.id
+    chat_id = call.message.chat.id
     file_id = call.data.split('_')[1]
 
     if is_user_subscribed(user_id):
         bot.answer_callback_query(call.id, "✅ Verification Successful! Fetching file...", show_alert=False)
         try:
-            bot.delete_message(call.message.chat.id, call.message.message_id)
+            bot.delete_message(chat_id, call.message.message_id)
         except Exception:
             pass
-        send_requested_file(call.message.chat.id, file_id)
+        send_requested_file(chat_id, file_id)
     else:
         bot.answer_callback_query(call.id, "❌ Aapne abhi tak channel join nahi kiya hai. Pehle Join Royal par click karein!", show_alert=True)
 
@@ -96,6 +117,7 @@ def send_requested_file(chat_id, file_id):
         except Exception as e:
             bot.send_message(chat_id, f"❌ Telegram API Error: Unable to send file. ({e})")
     else:
+        # Agar restart ki wajah se RAM clear ho gayi toh ye message dikhega
         bot.send_message(chat_id, "❌ <b>Error:</b> This link has expired because the bot was restarted. Please ask the admin for a new link.", parse_mode="HTML")
 
 @bot.message_handler(content_types=['document', 'video', 'photo', 'audio'])
@@ -129,10 +151,9 @@ def handle_incoming_files(message):
 
 if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
-    print("Bot is starting cleanly...")
+    print("Bot is starting cleanly with auto ID-fixing...")
     
     try:
-        # Sabse safe tarika saare purane atke updates ko clear karne ka
         bot.delete_webhook(drop_pending_updates=True)
     except Exception as e:
         print(f"Webhook clear error: {e}")
