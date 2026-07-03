@@ -129,11 +129,12 @@ def handle_incoming_files(message):
 
 if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
-    print("Bot is starting with strict polling...")
+    print("Bot is starting with correct polling...")
     while True:
         try:
-            # non_stop=True aur skip_pending_updates duplicate instances ko handle karega
-            bot.infinity_polling(timeout=10, long_polling_timeout=5, skip_pending_updates=True)
+            # Purane pending messages ko clear karne ka sahi tareeka
+            bot.skip_pending_updates()
+            bot.infinity_polling(timeout=10, long_polling_timeout=5)
         except Exception as e:
-            print(f"Polling conflict or error: {e}. Retrying in 5s...")
+            print(f"Polling error: {e}. Retrying in 5s...")
             time.sleep(5)
