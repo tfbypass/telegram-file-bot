@@ -67,14 +67,10 @@ def handle_start(message):
             else:
                 bot.send_message(message.chat.id, "❌ Error: This file link has expired or is invalid.")
         else:
-            try:
-                bot_username = bot.get_me().username
-            except Exception:
-                bot_username = "YourBot"
-                
+            # Username yahan fix kar diya hai
             markup = InlineKeyboardMarkup()
             markup.add(InlineKeyboardButton("📢 Join Our Channel", url=CHANNEL_URL))
-            markup.add(InlineKeyboardButton("🔄 Try Again", url=f"https://t.me/{bot_username}?start={file_id}"))
+            markup.add(InlineKeyboardButton("🔄 Try Again", url=f"https://t.me/royal_newwww_bot?start={file_id}"))
             
             bot.send_message(
                 message.chat.id, 
@@ -109,12 +105,8 @@ def handle_incoming_files(message):
     if file_id:
         file_database[file_id] = {"type": file_type, "caption": caption}
         
-        try:
-            bot_username = bot.get_me().username
-        except Exception:
-            bot_username = "YourBot"
-            
-        share_link = f"https://t.me/{bot_username}?start={file_id}"
+        # Link generation mein bhi username fix kar diya hai
+        share_link = f"https://t.me/royal_newwww_bot?start={file_id}"
         
         response_text = (
             "✅ **Link Generated Successfully!**\n\n"
@@ -125,7 +117,6 @@ def handle_incoming_files(message):
 
 if __name__ == "__main__":
     print("Starting Flask web server in a separate thread...")
-    # Flask ko alag thread mein chalaya taaki bot ka polling loop na ruke
     threading.Thread(target=run_flask, daemon=True).start()
     
     print("Bot is booting up with polling loop...")
