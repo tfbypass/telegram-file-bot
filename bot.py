@@ -129,12 +129,17 @@ def handle_incoming_files(message):
 
 if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
-    print("Bot is starting with correct polling...")
+    print("Bot is starting cleanly...")
+    
+    try:
+        # Sabse safe tarika saare purane atke updates ko clear karne ka
+        bot.delete_webhook(drop_pending_updates=True)
+    except Exception as e:
+        print(f"Webhook clear error: {e}")
+
     while True:
         try:
-            # Purane pending messages ko clear karne ka sahi tareeka
-            bot.skip_pending_updates()
-            bot.infinity_polling(timeout=10, long_polling_timeout=5)
+            bot.infinity_polling(timeout=20, long_polling_timeout=10)
         except Exception as e:
-            print(f"Polling error: {e}. Retrying in 5s...")
+            print(f"Polling crash prevented: {e}. Reconnecting in 5s...")
             time.sleep(5)
