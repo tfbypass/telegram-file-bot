@@ -54,14 +54,15 @@ def handle_start(message):
             markup.add(InlineKeyboardButton("🔄 Verify Subscription", callback_data=f"verify_{file_id}"))
             bot.send_message(
                 message.chat.id, 
-                "⚠️ **Access Denied!**\n\nYou must join our channel and then click 'Verify Subscription' to unlock your file.", 
-                reply_markup=markup
+                "⚠️ <b>Access Denied!</b>\n\nYou must join our channel and then click 'Verify Subscription' to unlock your file.", 
+                reply_markup=markup,
+                parse_mode="HTML"
             )
     else:
         if user_id == ADMIN_ID:
-            bot.send_message(message.chat.id, "👋 **Welcome Admin!**\n\nForward me any file to generate a link.")
+            bot.send_message(message.chat.id, "👋 <b>Welcome Admin!</b>\n\nForward me any file to generate a link.", parse_mode="HTML")
         else:
-            bot.send_message(message.chat.id, "👋 **Welcome!**\n\nThis bot can only open secure download links shared by the admin.")
+            bot.send_message(message.chat.id, "👋 <b>Welcome!</b>\n\nThis bot can only open secure download links shared by the admin.", parse_mode="HTML")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('verify_'))
 def handle_verification(call):
@@ -82,7 +83,7 @@ def send_requested_file(chat_id, file_id):
     if file_id in file_database:
         file_data = file_database[file_id]
         caption = file_data.get("caption", "")
-        bot.send_message(chat_id, "📦 **Here is your requested file:**")
+        bot.send_message(chat_id, "📦 <b>Here is your requested file:</b>", parse_mode="HTML")
         try:
             if file_data["type"] == "document":
                 bot.send_document(chat_id, file_id, caption=caption)
@@ -95,7 +96,7 @@ def send_requested_file(chat_id, file_id):
         except Exception as e:
             bot.send_message(chat_id, f"❌ Telegram API Error: Unable to send file. ({e})")
     else:
-        bot.send_message(chat_id, "❌ **Error:** This link has expired because the bot was restarted. Please ask the admin for a new link.")
+        bot.send_message(chat_id, "❌ <b>Error:</b> This link has expired because the bot was restarted. Please ask the admin for a new link.", parse_mode="HTML")
 
 @bot.message_handler(content_types=['document', 'video', 'photo', 'audio'])
 def handle_incoming_files(message):
@@ -123,8 +124,8 @@ def handle_incoming_files(message):
     if file_id:
         file_database[file_id] = {"type": file_type, "caption": caption}
         share_link = f"https://t.me/royal_x_arena_bot?start={file_id}"
-        response_text = f"✅ **Link Generated Successfully!**\n\n🔗 **Your Link:** {share_link}"
-        bot.reply_to(message, response_text, parse_mode="Markdown")
+        response_text = f"✅ <b>Link Generated Successfully!</b>\n\n🔗 <b>Your Link:</b> {share_link}"
+        bot.reply_to(message, response_text, parse_mode="HTML")
 
 if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
