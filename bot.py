@@ -6,8 +6,8 @@ import telebot
 from telebot import apihelper
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-apihelper.CONNECT_TIMEOUT = 90
-apihelper.READ_TIMEOUT = 90
+apihelper.CONNECT_TIMEOUT = 60
+apihelper.READ_TIMEOUT = 60
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHANNEL_ID = int(os.environ.get("CHANNEL_ID"))
@@ -129,8 +129,11 @@ def handle_incoming_files(message):
 
 if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
+    print("Bot is starting with strict polling...")
     while True:
         try:
-            bot.infinity_polling(timeout=90, long_polling_timeout=90)
-        except Exception:
+            # non_stop=True aur skip_pending_updates duplicate instances ko handle karega
+            bot.infinity_polling(timeout=10, long_polling_timeout=5, skip_pending_updates=True)
+        except Exception as e:
+            print(f"Polling conflict or error: {e}. Retrying in 5s...")
             time.sleep(5)
